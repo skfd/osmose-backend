@@ -1221,7 +1221,11 @@ canada_ontario_region('eastern_ontario', 9330323)
 canada_ontario_region('golden_horseshoe', 9330407)
 canada_ontario_region('northeastern_ontario', 9330447)
 canada_ontario_region('northwestern_ontario', 9330452)
-canada_ontario_region('southwestern_ontario', 9330436)
+canada_ontario_region('southwestern_ontario', 9330436, include=[
+    'merge_hydrants_CA_ON_guelph',
+    'merge_public_transport_CA_ON_guelph',
+    'merge_defibrillators_CA_ON_guelph',
+])
 
 canada_province("prince_edward_island", 391115, "CA-PE", proj=32620)
 
