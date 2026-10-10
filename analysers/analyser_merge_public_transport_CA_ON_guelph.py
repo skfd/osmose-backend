@@ -44,10 +44,12 @@ class Analyser_Merge_Public_Transport_CA_ON_Guelph(Analyser_Merge_Point):
             Load_XY("geom_x", "geom_y"),
             Conflate(
                 select = Select(
-                    types = ["nodes", "ways"],
+                    # Nodes only: platform ways carry highway=platform, which highway=bus_stop would overwrite.
+                    # GO Transit platforms stand metres from Guelph Transit's at Guelph Central.
+                    types = ["nodes"],
                     tags = [
-                        {"highway": "bus_stop"},
-                        {"public_transport": "platform", "bus": "yes"}]),
+                        {"highway": "bus_stop", "network": [False, place]},
+                        {"public_transport": "platform", "bus": "yes", "network": [False, place]}]),
                 osmRef = "ref",
                 conflationDistance = 30,
                 mapping = Mapping(
