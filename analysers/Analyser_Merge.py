@@ -38,6 +38,7 @@ import fnmatch
 import shutil
 import subprocess
 import pathlib
+import urllib.parse
 from pyarrow import parquet
 from typing import Optional, Dict, Union, Callable, Any
 from collections import defaultdict
@@ -578,6 +579,66 @@ class SourceHttpLastModified(Source):
             return None
         else:
             return datetime.datetime.strptime(last_modified, downloader.HTTP_DATE_FMT)
+
+class SourceArcGIS(Source):
+    """
+    Read a layer from an ArcGIS FeatureServer or MapServer as GeoJSON.
+    The server caps each query at its maxRecordCount, so pages are fetched
+    with resultOffset and joined into one FeatureCollection.
+    """
+    def __init__(self, url: str, where: str = "1=1", **kwargs):
+        """
+        @param url: layer URL, ending with the layer number, e.g. .../FeatureServer/3
+        @param where: SQL filter applied by the server
+        """
+        self.layer_url = url.rstrip("/")
+        self.where = where
+        super().__init__(fileUrl = self.layer_url + "/query?" + urllib.parse.urlencode({"where": where, "outFields": "*", "f": "geojson"}), **kwargs)
+
+    def _fetch(self, url, tmp_file, date_string = None):
+        session = downloader.requests_retry_session()
+        features = []
+        while True:
+            answer = session.get(self.layer_url + "/query", params = {
+                "where": self.where,
+                "outFields": "*",
+                "outSR": 4326,
+                "f": "geojson",
+                "resultOffset": len(features),
+            })
+            answer.raise_for_status()
+            page = answer.json()
+            if "error" in page:
+                raise Exception("ArcGIS error on {0}: {1}".format(self.layer_url, page["error"]))
+            features += page.get("features") or []
+            exceeded = page.get("exceededTransferLimit") or (page.get("properties") or {}).get("exceededTransferLimit")
+            if not exceeded or not page.get("features"):
+                break
+        with open(tmp_file, "w", encoding = "utf-8") as outfile:
+            json.dump({"type": "FeatureCollection", "features": features}, outfile)
+        return True
+
+    def path(self):
+        return downloader.update_cache(self.fileUrl, self.fileUrlCache, fetch = self._fetch)
+
+    def time(self):
+        return int(os.stat(self.path()).st_mtime + .5)
+
+    def open(self, binary = False):
+        f = open(self.path(), "rb")
+        if not binary:
+            f = io.TextIOWrapper(f, encoding = self.encoding, errors = "ignore")
+            if self.filter:
+                f = self.filter(f)
+        return f
+
+    def get_millesime(self):
+        info = downloader.requests_retry_session().get(self.layer_url, params = {"f": "json"}).json()
+        editing = info.get("editingInfo") or {}
+        last_edit = editing.get("dataLastEditDate") or editing.get("lastEditDate")
+        if last_edit:
+            return datetime.datetime.fromtimestamp(last_edit / 1000)
+        return None
 
 class SourceIGN(Source):
     def __init__(self, dep_code, **kwargs):
