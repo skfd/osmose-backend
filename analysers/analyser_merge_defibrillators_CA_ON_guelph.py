@@ -35,10 +35,12 @@ class Analyser_Merge_Defibrillators_CA_ON_Guelph(Analyser_Merge_Point):
         self.def_class_missing_official(item = 8370, id = 140, level = 3, tags = ['merge', 'emergency', 'fix:picture', 'fix:survey'],
             title = T_('Defibrillator not integrated'))
 
+        # Guelph-Wellington Paramedic Service registry, published by the City of Guelph:
+        # covers the City and Wellington County.
         # Positions are geocoded to the building's address point, not to the device:
         # a survey is needed to place it, hence the conflation distance.
         self.init(
-            "https://geodatahub-cityofguelph.opendata.arcgis.com/",
+            "https://www.arcgis.com/home/item.html?id=fff9039d34d1443c8c2be3324798dbba",
             "AED Locations",
             GeoJSON(SourceArcGIS(
                 attribution = "City of Guelph",
